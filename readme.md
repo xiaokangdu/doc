@@ -84,3 +84,8 @@ $ git revert 1b6d
 $ git diff 0a9cb2b "develop~2"
 $ git diff 0a9cb2b 18e77e1
 ```
+
+- fatal: unable to access 'https://xxxxx.git/': SSL certificate problem: unable to get local issuer certificate
+```shell
+$ git config --global http.sslVerify false
+```
