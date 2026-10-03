@@ -34,4 +34,4 @@ git branch -d feature/search     # 删除已完成的分支
 2. 保留正确内容并删除标记
 3. git add 冲突文件，然后 git commit
 
-返回 [Git 基础](notes/git/git-basics)。
+返回 [Git 基础](git/basics)。

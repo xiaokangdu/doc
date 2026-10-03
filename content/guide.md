@@ -1,100 +1,65 @@
 # 站点使用指南
 
-这份指南说明如何维护站点、新增页面，以及如何发布到 GitHub Pages。
+> 站点是纯静态的「顶部大类 + 左侧子主题 + 页面内知识点」三层结构，全部由 content/nav.json 驱动。
 
 ## 目录结构
 
 ~~~text
 knowledge-site/
-├── index.html              页面骨架（基本不用改）
-├── assets/
-│   ├── css/style.css       浅色主题与动画
-│   └── js/
-│       ├── markdown.js     零依赖 Markdown 渲染器
-│       ├── core.js         菜单/搜索等纯逻辑
-│       └── app.js          路由与交互
+├── index.html
+├── assets/{css,js}
 ├── content/
-│   ├── nav.json            菜单配置（唯一需要手工维护的清单）
-│   ├── home.md             首页
-│   └── notes/              所有笔记，按主题分文件夹
-├── scripts/new-note.mjs    新增笔记的小工具
-└── tests/test.cjs          核心逻辑单元测试
+│   ├── nav.json          ★ 菜单配置（顶部大类 + 左侧子菜单）
+│   ├── home.md           首页
+│   ├── database/         数据库：oceanbase / oracle / mysql
+│   ├── java/             JAVA：基础语法 / 集合框架
+│   ├── git/              GIT：基础 / 分支 / 远程
+│   ├── business/         业务规则：订单 / 风控
+│   └── frontend/         前端：CSS / JS / 工具
+├── scripts/new-note.mjs  新增笔记工具
+└── tests/                自检脚本
 ~~~
 
-## 新增一篇笔记
+## 三层菜单怎么对应
 
-### 方式一：手动（推荐，最直观）
+| 层级 | 位置 | nav.json 字段 |
+| --- | --- | --- |
+| 第一层（大类） | 顶部**分段控件** | nav 数组的顶层节点 |
+| 第二层（子主题） | 左侧菜单 | 顶层节点的 children |
+| 第三层（知识点） | 点击子主题后左侧菜单替换为它 | 子主题节点的 children |
 
-1. 在 content 下新建文件，例如 content/notes/frontend/regex.md
-2. 用一级标题开头：
+## 新增一个大类
 
-~~~markdown
-# 正则表达式速查
-
-## 常用元字符
-
-| 符号 | 含义 |
-| --- | --- |
-| . | 任意字符 |
-| * | 零次或多次 |
-~~~
-
-3. 在 content/nav.json 的对应分组中加入一行：
+在 content/nav.json 的 nav 数组末尾追加：
 
 ~~~json
-{ "title": "正则表达式速查", "path": "notes/frontend/regex" }
+{ "title": "算法", "path": "algorithm", "children": [
+  { "title": "排序", "path": "algorithm/sort" }
+] }
 ~~~
 
-4. 保存后刷新页面即可，无需重新构建。
+同时新建 content/algorithm.md（大类概览页）即可。顶部会自动多出一个分段按钮。
 
-### 方式二：命令行工具
+## 新增一个知识点
 
-~~~bash
-node scripts/new-note.mjs --title "正则表达式速查" --path "notes/frontend/regex" --group "前端"
-~~~
-
-该命令会自动创建 Markdown 文件，并把菜单项插入到名为「前端」的分组中。
-
-## 菜单可以有多少层
-
-不限层级。nav.json 里带 children 的节点就是分组，带 path 的节点就是页面：
+1. 新建 content/database/oracle/index-hint.md
+2. 在 nav.json 里 Oracle 的 children 中加一条：
 
 ~~~json
-{
-  "title": "编程基础",
-  "children": [
-    { "title": "Git", "children": [
-      { "title": "Git 基础", "path": "notes/git/git-basics" }
-    ] }
-  ]
-}
+{ "title": "索引提示", "path": "database/oracle/index-hint" }
 ~~~
 
-## 支持的 Markdown 语法
-
-- 标题、粗体、斜体、删除线
-- 行内代码与围栏代码块（带复制按钮）
-- 有序 / 无序列表，支持嵌套
-- 引用、分割线、表格（支持左中右对齐）
-- 链接与图片，跳转站内笔记可直接写相对路径
-
-## 发布到 GitHub Pages
-
-1. 新建一个 GitHub 仓库，例如 my-notes
-2. 把 knowledge-site 目录里的**全部内容**推送到仓库根目录
-3. 打开仓库 Settings → Pages
-4. 在 Build and deployment 处选择 Deploy from a branch
-5. Branch 选 main，目录选 / (root)，保存
-6. 等待约一分钟，访问 https://你的用户名.github.io/my-notes/
-
-> 页面使用哈希路由（网址里的 #/），因此不需要任何服务器跳转配置，子路径部署也能正常工作。
-
-## 本地预览
+也可以使用命令行工具：
 
 ~~~bash
-cd knowledge-site
+node scripts/new-note.mjs --title "索引提示" --path "database/oracle/index-hint" --group "Oracle"
+~~~
+
+## 本地预览与发布
+
+~~~bash
 python3 -m http.server 8080
-# 然后浏览器打开 http://localhost:8080
+# 打开 http://localhost:8080
 ~~~
 
-直接双击 index.html 会因浏览器安全策略无法读取笔记，请务必使用本地服务器。
+推送到 GitHub 后，仓库 Settings → Pages 选择 main 分支根目录即可，地址形如 https://用户名.github.io/仓库名/。

@@ -1,26 +1,25 @@
 /*!
  * app.js — 站点交互逻辑
+ * 顶部大类 = 分段控件；左侧 = 钻取式子菜单；点击子主题进入其知识点菜单。
  * 纯静态、无构建：哈希路由 + JSON 菜单 + Markdown 渲染 + 全文搜索。
- * 新增笔记只需：新建 content/**.md 并在 content/nav.json 登记即可。
  */
 (function () {
   'use strict';
 
   var Markdown = window.Markdown;
   var Core = window.SiteCore;
-
   var DEFAULT_PATH = 'home';
-  var STORAGE_KEY = 'notes.openGroups';
 
   var state = {
     site: {},
     nav: [],
     flat: [],
-    openGroups: {},
+    currentPath: '',
+    chain: null,
+    section: null,
+    focus: null,
     contentCache: {},
     textIndex: null,
-    rowEls: {},
-    currentPath: '',
     searchActive: -1
   };
 
@@ -49,102 +48,11 @@
     return cjk + latin;
   }
 
-  /* ---------------- 数据加载 ---------------- */
-
   function fetchText(url) {
     return fetch(url, { cache: 'no-cache' }).then(function (res) {
       if (!res.ok) { throw new Error('HTTP ' + res.status); }
       return res.text();
     });
-  }
-
-  function loadOpenGroups() {
-    try {
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) { state.openGroups = JSON.parse(raw) || {}; }
-    } catch (err) { state.openGroups = {}; }
-  }
-
-  function saveOpenGroups() {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.openGroups)); } catch (err) { /* 忽略隐私模式报错 */ }
-  }
-
-  /* ---------------- 侧栏导航 ---------------- */
-
-  function buildSidebar() {
-    dom.navTree.innerHTML = '';
-    state.rowEls = {};
-    buildNav(state.nav, 0, '', dom.navTree, []);
-  }
-
-  function buildNav(nodes, depth, keyPrefix, container, groups) {
-    (nodes || []).forEach(function (node) {
-      var item = el('div', 'nav-item');
-      var row = el('button', 'nav-row');
-      row.type = 'button';
-      row.style.setProperty('--depth', String(depth));
-
-      row.appendChild(el('span', 'nav-label', (node.icon ? node.icon + '  ' : '') + node.title));
-
-      var isGroup = !!(node.children && node.children.length);
-      if (isGroup) {
-        var key = keyPrefix + '/' + node.title;
-        row.classList.add('nav-row--group');
-        row.appendChild(el('span', 'nav-caret', '▸'));
-        item.appendChild(row);
-
-        var children = el('div', 'nav-children');
-        var inner = el('div', 'nav-children__inner');
-        var nextGroups = groups.concat([{ key: key, item: item }]);
-        buildNav(node.children, depth + 1, key, inner, nextGroups);
-        children.appendChild(inner);
-        item.appendChild(children);
-
-        var defaultOpen = depth === 0;
-        var isOpen = Object.prototype.hasOwnProperty.call(state.openGroups, key) ? state.openGroups[key] : defaultOpen;
-        item.classList.toggle('open', !!isOpen);
-        state.openGroups[key] = !!isOpen;
-
-        row.addEventListener('click', function () {
-          var willOpen = !item.classList.contains('open');
-          item.classList.toggle('open', willOpen);
-          state.openGroups[key] = willOpen;
-          saveOpenGroups();
-        });
-      } else {
-        row.classList.add('nav-row--leaf');
-        row.setAttribute('data-path', node.path);
-        row.addEventListener('click', function () { navigate(node.path); });
-        item.appendChild(row);
-        state.rowEls[node.path] = { row: row, groups: groups.slice() };
-      }
-
-      container.appendChild(item);
-    });
-  }
-
-  function setActive(path) {
-    Object.keys(state.rowEls).forEach(function (key) {
-      state.rowEls[key].row.classList.toggle('active', key === path);
-    });
-    var entry = state.rowEls[path];
-    if (!entry) { return; }
-    entry.groups.forEach(function (group) {
-      group.item.classList.add('open');
-      state.openGroups[group.key] = true;
-    });
-    saveOpenGroups();
-    revealInSidebar(entry.row);
-  }
-
-  function revealInSidebar(row) {
-    var sidebar = dom.sidebar;
-    if (!sidebar || window.innerWidth < 861) { return; }
-    var box = row.getBoundingClientRect();
-    var view = sidebar.getBoundingClientRect();
-    if (box.top < view.top || box.bottom > view.bottom) {
-      sidebar.scrollTop += (box.top - view.top) - (view.height / 2 - box.height / 2);
-    }
   }
 
   /* ---------------- 路由 ---------------- */
@@ -156,27 +64,126 @@
   }
 
   function navigate(path) {
+    if (!path) { return; }
     var target = '#/' + path;
     if (window.location.hash === target) { route(); return; }
     window.location.hash = target;
   }
 
   function route() {
-    showPage(currentPathFromHash());
+    var path = currentPathFromHash();
+    state.currentPath = path;
+    state.chain = Core.findChain(state.nav, path);
+    state.section = state.chain && state.chain.length ? state.chain[0] : null;
+    state.focus = state.chain ? Core.focusNode(state.chain) : null;
+    closeSidebar();
+    renderSegmented();
+    renderSidebar();
+    loadPage(path);
   }
 
-  /* ---------------- 页面渲染 ---------------- */
+  /* ---------------- 顶部分段控件 ---------------- */
 
-  function showPage(path) {
-    state.currentPath = path;
-    closeSidebar();
-    setActive(path);
+  function renderSegmented() {
+    dom.segmented.innerHTML = '';
+    state.nav.forEach(function (top) {
+      var btn = el('button', 'segment', top.title);
+      btn.type = 'button';
+      btn.setAttribute('role', 'tab');
+      if (state.section === top) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        btn.setAttribute('aria-selected', 'false');
+      }
+      btn.addEventListener('click', function () { navigate(top.path || Core.firstPath(top)); });
+      dom.segmented.appendChild(btn);
+    });
+  }
 
+  /* ---------------- 左侧钻取菜单 ---------------- */
+
+  function renderSidebar() {
+    dom.navTree.innerHTML = '';
+    if (!state.section) { renderAllTopics(); return; }
+    var top = state.section;
+    var focus = state.focus || top;
+
+    var head = el('div', 'side-head');
+    if (focus !== top && state.chain) {
+      var idx = state.chain.indexOf(focus);
+      var parent = idx > 0 ? state.chain[idx - 1] : top;
+      var back = el('button', 'side-back');
+      back.type = 'button';
+      back.appendChild(el('span', 'side-back__arrow', '←'));
+      back.appendChild(el('span', null, '返回 ' + parent.title));
+      back.addEventListener('click', function () { navigate(parent.path || Core.firstPath(parent)); });
+      head.appendChild(back);
+    }
+    var crumb = el('div', 'side-crumb');
+    crumb.appendChild(el('span', 'side-crumb__top', top.title));
+    if (focus !== top) {
+      crumb.appendChild(el('span', 'side-crumb__sep', '/'));
+      crumb.appendChild(el('span', 'side-crumb__current', focus.title));
+    }
+    head.appendChild(crumb);
+    dom.navTree.appendChild(head);
+
+    var list = el('ul', 'side-list');
+    (focus.children || []).forEach(function (child) { list.appendChild(sideItem(child)); });
+    dom.navTree.appendChild(list);
+    appendGuideLink();
+  }
+
+  function renderAllTopics() {
+    var head = el('div', 'side-head');
+    var crumb = el('div', 'side-crumb');
+    crumb.appendChild(el('span', 'side-crumb__top', '全部主题'));
+    head.appendChild(crumb);
+    dom.navTree.appendChild(head);
+
+    var list = el('ul', 'side-list');
+    state.nav.forEach(function (top) { list.appendChild(sideItem(top)); });
+    dom.navTree.appendChild(list);
+    appendGuideLink();
+  }
+
+  function appendGuideLink() {
+    var guide = el('a', 'side-guide', '使用指南');
+    guide.href = '#/guide';
+    dom.navTree.appendChild(guide);
+  }
+
+  function sideItem(node) {
+    var li = el('li', 'side-item');
+    var isGroup = !!(node.children && node.children.length);
+    var target = node.path || Core.firstPath(node);
+
+    var link = el(isGroup ? 'button' : 'a', 'side-link');
+    if (isGroup) { link.type = 'button'; } else { link.href = '#/' + node.path; }
+    link.appendChild(el('span', 'side-link__text', node.title));
+    if (isGroup) { link.appendChild(el('span', 'side-link__chevron', '›')); }
+
+    var active = isGroup
+      ? !!(state.chain && state.chain.indexOf(node) !== -1)
+      : state.currentPath === node.path;
+    if (active) { li.classList.add('active'); }
+
+    link.addEventListener('click', function (event) {
+      if (!isGroup) { event.preventDefault(); }
+      navigate(target);
+    });
+    li.appendChild(link);
+    return li;
+  }
+
+  /* ---------------- 页面内容 ---------------- */
+
+  function loadPage(path) {
     if (Object.prototype.hasOwnProperty.call(state.contentCache, path)) {
       renderPage(path, state.contentCache[path]);
       return;
     }
-
     renderLoading();
     fetchText('content/' + path + '.md').then(function (text) {
       state.contentCache[path] = text;
@@ -189,17 +196,13 @@
   function renderPage(path, text) {
     var parsed = Markdown.parse(text);
     var node = Core.findNode(state.nav, path) || {};
-    var trail = Core.findTrail(state.nav, path) || [{ title: node.title || path, path: path }];
-
     var frag = document.createDocumentFragment();
 
     var head = el('div', 'page-head');
-    head.appendChild(buildBreadcrumb(trail));
-
+    head.appendChild(buildBreadcrumb(path));
     var meta = el('div', 'page-meta');
-    meta.appendChild(metaChip('📖', Core.readingMinutes(text) + ' 分钟阅读'));
-    meta.appendChild(metaChip('✍️', '约 ' + wordCount(text) + ' 字'));
-    meta.appendChild(metaChip('🔖', path));
+    meta.appendChild(metaChip('阅读约 ' + Core.readingMinutes(text) + ' 分钟'));
+    meta.appendChild(metaChip('约 ' + wordCount(text) + ' 字'));
     head.appendChild(meta);
     frag.appendChild(head);
 
@@ -211,6 +214,13 @@
     var pager = buildPager(path);
     if (pager) { frag.appendChild(pager); }
 
+    var inlineTop = el('button', 'inline-top');
+    inlineTop.type = 'button';
+    inlineTop.appendChild(el('span', 'inline-top__icon', '↑'));
+    inlineTop.appendChild(el('span', null, '回到顶部'));
+    inlineTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    frag.appendChild(inlineTop);
+
     dom.contentInner.innerHTML = '';
     dom.contentInner.appendChild(frag);
 
@@ -220,28 +230,38 @@
     onScroll();
   }
 
-  function buildBreadcrumb(trail) {
+  function buildBreadcrumb(path) {
     var nav = el('nav', 'breadcrumb');
     nav.setAttribute('aria-label', '面包屑');
-    trail.forEach(function (item, index) {
-      if (index > 0) { nav.appendChild(el('span', 'breadcrumb__sep', '/')); }
-      var last = index === trail.length - 1;
-      if (!last && item.path) {
-        var link = el('a', null, item.title);
-        link.href = '#/' + item.path;
-        nav.appendChild(link);
-      } else {
-        nav.appendChild(el('span', last ? 'breadcrumb__current' : null, item.title));
-      }
-    });
+    if (path === 'home') {
+      nav.appendChild(el('span', 'breadcrumb__current', '首页'));
+      return nav;
+    }
+    var home = el('a', null, '首页');
+    home.href = '#/home';
+    nav.appendChild(home);
+
+    if (state.chain && state.chain.length) {
+      state.chain.forEach(function (node, i) {
+        nav.appendChild(el('span', 'breadcrumb__sep', '/'));
+        var last = i === state.chain.length - 1;
+        if (!last && node.path) {
+          var a = el('a', null, node.title);
+          a.href = '#/' + node.path;
+          nav.appendChild(a);
+        } else {
+          nav.appendChild(el('span', last ? 'breadcrumb__current' : null, node.title));
+        }
+      });
+    } else {
+      nav.appendChild(el('span', 'breadcrumb__sep', '/'));
+      nav.appendChild(el('span', 'breadcrumb__current', path === 'guide' ? '站点使用指南' : path));
+    }
     return nav;
   }
 
-  function metaChip(icon, text) {
-    var chip = el('span', 'meta-chip');
-    chip.appendChild(el('span', null, icon));
-    chip.appendChild(el('span', null, text));
-    return chip;
+  function metaChip(text) {
+    return el('span', 'meta-chip', text);
   }
 
   function rewriteInternalLinks(article) {
@@ -256,13 +276,14 @@
   }
 
   function buildPager(path) {
+    var ordered = state.section ? Core.flattenNav([state.section]) : state.flat;
     var index = -1;
-    for (var i = 0; i < state.flat.length; i += 1) {
-      if (state.flat[i].path === path) { index = i; break; }
+    for (var i = 0; i < ordered.length; i += 1) {
+      if (ordered[i].path === path) { index = i; break; }
     }
     if (index === -1) { return null; }
-    var prev = state.flat[index - 1];
-    var next = state.flat[index + 1];
+    var prev = ordered[index - 1];
+    var next = ordered[index + 1];
     if (!prev && !next) { return null; }
     var pager = el('div', 'pager');
     pager.appendChild(prev ? pagerLink(prev, 'prev') : el('span'));
@@ -294,7 +315,7 @@
   function renderNotFound(path) {
     var box = el('div', 'state');
     box.appendChild(el('div', 'state__icon', '🔍'));
-    box.appendChild(el('h2', 'state__title', '未找到这篇笔记'));
+    box.appendChild(el('h2', 'state__title', '未找到这个知识点'));
     var text = el('p', 'state__text');
     text.appendChild(document.createTextNode('缺少内容文件 '));
     text.appendChild(el('code', null, 'content/' + path + '.md'));
@@ -327,7 +348,7 @@
     dom.contentInner.appendChild(box);
   }
 
-  /* ---------------- 目录 ---------------- */
+  /* ---------------- 本页目录 ---------------- */
 
   function buildToc(toc) {
     if (tocObserver) { tocObserver.disconnect(); tocObserver = null; }
@@ -369,7 +390,7 @@
       Object.keys(linkById).forEach(function (id) {
         linkById[id].classList.toggle('active', ids.length > 0 && id === ids[0]);
       });
-    }, { rootMargin: '-80px 0px -65% 0px', threshold: 0 });
+    }, { rootMargin: '-90px 0px -65% 0px', threshold: 0 });
 
     items.forEach(function (item) {
       var heading = document.getElementById(item.id);
@@ -403,14 +424,14 @@
     var lower = query.toLowerCase();
     var titleHits = state.flat.filter(function (item) {
       return item.title.toLowerCase().indexOf(lower) !== -1;
-    }).slice(0, 6);
+    }).slice(0, 7);
     var matched = {};
     titleHits.forEach(function (item) { matched[item.path] = true; });
 
     ensureTextIndex().then(function (index) {
       var contentHits = index.filter(function (entry) {
         return !matched[entry.item.path] && entry.text.toLowerCase().indexOf(lower) !== -1;
-      }).slice(0, 6);
+      }).slice(0, 7);
       renderSearchResults(query, titleHits, contentHits);
     });
   }
@@ -425,9 +446,7 @@
     }
     if (titleHits.length) {
       dom.searchResults.appendChild(el('div', 'search-group', '标题匹配'));
-      titleHits.forEach(function (item) {
-        dom.searchResults.appendChild(searchItem(item, null, query));
-      });
+      titleHits.forEach(function (item) { dom.searchResults.appendChild(searchItem(item, null, query)); });
     }
     if (contentHits.length) {
       dom.searchResults.appendChild(el('div', 'search-group', '正文匹配'));
@@ -496,11 +515,13 @@
 
   function onScroll() {
     var doc = document.documentElement;
-    var max = doc.scrollHeight - doc.clientHeight;
     var top = window.scrollY || doc.scrollTop || 0;
+    var max = doc.scrollHeight - doc.clientHeight;
     var ratio = max > 0 ? top / max : 0;
-    dom.progressBar.style.width = (Math.min(1, Math.max(0, ratio)) * 100).toFixed(2) + '%';
-    dom.backTop.classList.toggle('show', top > 360);
+    if (dom.progressBar) {
+      dom.progressBar.style.width = (Math.min(1, Math.max(0, ratio)) * 100).toFixed(2) + '%';
+    }
+    dom.backTop.classList.toggle('show', top > 80);
   }
 
   function copyText(text) {
@@ -524,23 +545,20 @@
 
   function renderFooter() {
     var title = state.site.title || '晓康的笔记';
-    dom.siteFooter.textContent = '© ' + new Date().getFullYear() + ' ' + title + ' · 共 ' + state.flat.length + ' 篇笔记';
+    dom.siteFooter.textContent = '© ' + new Date().getFullYear() + ' ' + title + ' · 共 ' + state.flat.length + ' 个页面';
     if (state.site.lastUpdated) {
-      dom.siteFooter.appendChild(el('span', null, ' · 最近更新 ' + state.site.lastUpdated));
+      dom.siteFooter.appendChild(el('span', null, ' · 更新于 ' + state.site.lastUpdated));
     }
-    dom.sidebarFooter.innerHTML = '';
-    dom.sidebarFooter.appendChild(el('div', 'nav-section__title', '小提示'));
-    var tip = el('div', 'search-item__path', '按 / 搜索 · 共 ' + state.flat.length + ' 篇');
-    tip.style.padding = '0 10px';
-    dom.sidebarFooter.appendChild(tip);
+    if (dom.sidebarFooter) {
+      dom.sidebarFooter.innerHTML = '';
+      dom.sidebarFooter.appendChild(el('div', 'sidebar__hint', '按 / 可快速搜索'));
+    }
   }
 
   function bindEvents() {
     dom.menuToggle.addEventListener('click', openSidebar);
     dom.scrim.addEventListener('click', closeSidebar);
-    dom.backTop.addEventListener('click', function () {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    dom.backTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
     dom.searchInput.addEventListener('input', onSearchInput);
     dom.searchInput.addEventListener('keydown', onSearchKeydown);
     dom.searchInput.addEventListener('focus', onSearchInput);
@@ -554,10 +572,7 @@
     document.addEventListener('keydown', function (event) {
       var tag = (event.target.tagName || '').toLowerCase();
       var typing = tag === 'input' || tag === 'textarea' || event.target.isContentEditable;
-      if (event.key === '/' && !typing) {
-        event.preventDefault();
-        dom.searchInput.focus();
-      }
+      if (event.key === '/' && !typing) { event.preventDefault(); dom.searchInput.focus(); }
     });
     dom.contentInner.addEventListener('click', function (event) {
       var button = event.target.closest ? event.target.closest('[data-copy]') : null;
@@ -588,24 +603,21 @@
     dom.searchInput = $('searchInput');
     dom.searchResults = $('searchResults');
     dom.search = document.querySelector('.search');
+    dom.segmented = $('segmented');
     dom.tocPanel = $('tocPanel');
     dom.tocList = $('tocList');
     dom.menuToggle = $('menuToggle');
     dom.scrim = $('scrim');
     dom.backTop = $('backTop');
-    dom.progressBar = $('progressBar');
     dom.brandText = $('brandText');
+    dom.progressBar = $('progressBar');
     dom.sidebarFooter = $('sidebarFooter');
     dom.siteFooter = $('siteFooter');
     dom.randomBtn = $('randomBtn');
 
-    loadOpenGroups();
     bindEvents();
 
-    if (window.location.protocol === 'file:') {
-      renderFileProtocolNotice();
-      return;
-    }
+    if (window.location.protocol === 'file:') { renderFileProtocolNotice(); return; }
 
     fetchText('content/nav.json').then(function (text) {
       var config = JSON.parse(text);
@@ -614,13 +626,11 @@
       state.flat = Core.flattenNav(state.nav);
       if (dom.brandText) { dom.brandText.textContent = state.site.title || '晓康的笔记'; }
       document.title = state.site.title || '晓康的笔记';
-      buildSidebar();
       renderFooter();
       route();
     }).catch(function (err) {
       dom.contentInner.innerHTML = '';
       var box = el('div', 'state');
-      box.appendChild(el('div', 'state__icon', '⚠️'));
       box.appendChild(el('h2', 'state__title', '菜单加载失败'));
       box.appendChild(el('p', 'state__text', '请确认 content/nav.json 存在且格式正确。（' + err.message + '）'));
       dom.contentInner.appendChild(box);

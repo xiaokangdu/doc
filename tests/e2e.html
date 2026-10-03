@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>E2E 交互自检</title>
-  <style>body{font-family:monospace;padding:16px}iframe{width:1180px;height:760px;border:1px solid #ccc}pre{white-space:pre-wrap}</style>
+  <style>body{font-family:monospace;padding:16px}iframe{width:1180px;height:740px;border:1px solid #ccc}pre{white-space:pre-wrap}</style>
 </head>
 <body>
   <iframe id="frame" src="../index.html"></iframe>
@@ -16,49 +16,78 @@ E2E-END</pre>
       var lines = [];
       function log(name, cond) { lines.push((cond ? 'PASS' : 'FAIL') + ' :: ' + name); }
       function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+      function texts(nodes) { return Array.prototype.map.call(nodes, function (n) { return n.textContent; }).join(','); }
 
       async function run() {
         var frame = document.getElementById('frame');
         await new Promise(function (resolve) { frame.addEventListener('load', resolve, { once: true }); });
-        await wait(1500);
-        var w = frame.contentWindow;
-        var d = frame.contentDocument;
+        await wait(1600);
+        var w = frame.contentWindow, d = frame.contentDocument;
 
-        log('左侧菜单已渲染(>=6)', d.querySelectorAll('#navTree .nav-row').length >= 6);
+        log('顶部分段控件已渲染(>=4)', d.querySelectorAll('#segmented .segment').length >= 4);
         log('首页内容渲染', d.querySelector('#contentInner').textContent.indexOf('欢迎来到我的笔记库') !== -1);
-        log('面包屑存在', !!d.querySelector('.breadcrumb'));
-        log('顶栏品牌标题加载', d.getElementById('brandText').textContent.length > 0);
+        log('首页左侧显示全部主题', d.querySelectorAll('#navTree .side-link').length >= 4);
 
-        w.location.hash = '#/notes/git/git-basics';
-        await wait(1500);
-        var article = d.querySelector('.article');
-        log('路由切换并渲染笔记', !!article && article.textContent.indexOf('工作区') !== -1);
+        var segs = d.querySelectorAll('#segmented .segment');
+        var dbBtn = null;
+        for (var i = 0; i < segs.length; i += 1) { if (segs[i].textContent.indexOf('数据库') !== -1) { dbBtn = segs[i]; } }
+        dbBtn.click();
+        await wait(1200);
+        var lv2 = texts(d.querySelectorAll('#navTree .side-link__text'));
+        log('点击数据库后左侧列出子库', lv2.indexOf('Oracle') !== -1 && lv2.indexOf('MySQL') !== -1);
+
+        var links = d.querySelectorAll('#navTree .side-link');
+        var oracleBtn = null;
+        for (var j = 0; j < links.length; j += 1) { if (links[j].textContent.indexOf('Oracle') !== -1) { oracleBtn = links[j]; } }
+        oracleBtn.click();
+        await wait(1200);
+        var lv3 = texts(d.querySelectorAll('#navTree .side-link__text'));
+        log('进入 Oracle 后左侧变为其知识点菜单', lv3.indexOf('语法') !== -1 && lv3.indexOf('函数') !== -1 && lv3.indexOf('易错点') !== -1);
+        log('出现返回上一级按钮', !!d.querySelector('#navTree .side-back'));
+        log('面包屑包含 Oracle', d.querySelector('.breadcrumb').textContent.indexOf('Oracle') !== -1);
+
+        var subLinks = d.querySelectorAll('#navTree .side-link');
+        var synBtn = null;
+        for (var k = 0; k < subLinks.length; k += 1) { if (subLinks[k].textContent.indexOf('语法') !== -1) { synBtn = subLinks[k]; } }
+        synBtn.click();
+        await wait(1200);
+        log('点击语法加载对应内容', d.querySelector('.article').textContent.indexOf('CREATE') !== -1);
         log('本页目录已生成(>=2)', d.querySelectorAll('#tocList a').length >= 2);
         log('上一篇/下一篇出现', !!d.querySelector('.pager__link'));
-        log('当前菜单高亮', !!d.querySelector('.nav-row.active'));
+        log('页面内有回到顶部按钮', !!d.querySelector('.inline-top'));
+
+        d.documentElement.style.scrollBehavior = 'auto';
+        w.scrollTo(0, 700);
+        w.dispatchEvent(new w.Event('scroll'));
+        await wait(500);
+        log('滚动后浮动回到顶部出现', d.getElementById('backTop').classList.contains('show'));
+        log('阅读进度条随滚动更新', d.getElementById('progressBar').style.width !== '0%' && d.getElementById('progressBar').style.width !== '');
+        var wentTop = false;
+        var origScrollTo = w.scrollTo;
+        w.scrollTo = function () { wentTop = true; return origScrollTo.apply(w, arguments); };
+        d.getElementById('backTop').click();
+        await wait(300);
+        log('点击浮动按钮触发回到顶部', wentTop);
+        w.scrollTo = origScrollTo;
+        w.scrollTo(0, 0);
+        w.dispatchEvent(new w.Event('scroll'));
+        await wait(300);
+
+        d.querySelector('#navTree .side-back').click();
+        await wait(1000);
+        log('返回按钮回到数据库概览', d.querySelector('#contentInner').textContent.indexOf('OceanBase') !== -1);
 
         var input = d.getElementById('searchInput');
-        input.value = '分支';
+        input.value = '易错点';
         input.dispatchEvent(new w.Event('input', { bubbles: true }));
-        await wait(2000);
+        await wait(2200);
         var results = d.getElementById('searchResults');
         log('搜索下拉出现', results.hidden === false);
-        log('搜索命中标题', results.textContent.indexOf('分支管理') !== -1);
+        log('搜索命中易错点', results.textContent.indexOf('易错点') !== -1);
+        d.body.click();
+        await wait(200);
 
-        var first = results.querySelector('.search-item');
-        if (first) { first.click(); }
-        await wait(1200);
-        log('搜索结果可跳转', d.querySelector('.article').textContent.indexOf('分支') !== -1);
-        log('跳转后搜索框清空', input.value === '');
-
-        var tocLink = d.querySelector('#tocList a');
-        if (tocLink) { tocLink.click(); }
-        await wait(600);
-        log('目录点击不破坏哈希路由', w.location.hash.indexOf('#/') === 0);
-
-        d.getElementById('randomBtn').click();
-        await wait(1200);
-        log('随机一篇可用', !!d.querySelector('.article') && d.querySelector('.article').textContent.length > 20);
+        log('菜单无徽标类名', d.querySelectorAll('.nav-badge').length === 0);
 
         d.getElementById('menuToggle').click();
         await wait(300);

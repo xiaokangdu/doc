@@ -7,66 +7,166 @@
   },
   "nav": [
     {
-      "title": "开始",
-      "icon": "🏠",
+      "title": "数据库",
+      "path": "database",
       "children": [
         {
-          "title": "首页",
-          "path": "home",
-          "icon": "📄"
-        },
-        {
-          "title": "站点使用指南",
-          "path": "guide",
-          "icon": "🧭"
-        }
-      ]
-    },
-    {
-      "title": "编程基础",
-      "icon": "💻",
-      "children": [
-        {
-          "title": "Git",
-          "icon": "🌿",
+          "title": "OceanBase",
+          "path": "database/oceanbase",
           "children": [
             {
-              "title": "Git 基础",
-              "path": "notes/git/git-basics"
+              "title": "语法",
+              "path": "database/oceanbase/syntax"
             },
             {
-              "title": "分支管理",
-              "path": "notes/git/branching"
+              "title": "函数",
+              "path": "database/oceanbase/functions"
             },
             {
-              "title": "远程仓库操作备忘",
-              "path": "notes/git/remote-notes"
+              "title": "易错点",
+              "path": "database/oceanbase/pitfalls"
             }
           ]
         },
         {
-          "title": "前端",
-          "icon": "🎨",
+          "title": "Oracle",
+          "path": "database/oracle",
           "children": [
             {
-              "title": "CSS Flex 布局",
-              "path": "notes/frontend/css-flex"
+              "title": "语法",
+              "path": "database/oracle/syntax"
             },
             {
-              "title": "JavaScript 异步编程",
-              "path": "notes/frontend/js-async"
+              "title": "函数",
+              "path": "database/oracle/functions"
+            },
+            {
+              "title": "易错点",
+              "path": "database/oracle/pitfalls"
+            }
+          ]
+        },
+        {
+          "title": "MySQL",
+          "path": "database/mysql",
+          "children": [
+            {
+              "title": "语法",
+              "path": "database/mysql/syntax"
+            },
+            {
+              "title": "函数",
+              "path": "database/mysql/functions"
+            },
+            {
+              "title": "易错点",
+              "path": "database/mysql/pitfalls"
             }
           ]
         }
       ]
     },
     {
-      "title": "效率工具",
-      "icon": "🧰",
+      "title": "JAVA",
+      "path": "java",
       "children": [
+        {
+          "title": "基础语法",
+          "path": "java/basics",
+          "children": [
+            {
+              "title": "变量与类型",
+              "path": "java/basics/types"
+            },
+            {
+              "title": "流程控制",
+              "path": "java/basics/control"
+            }
+          ]
+        },
+        {
+          "title": "集合框架",
+          "path": "java/collections",
+          "children": [
+            {
+              "title": "List 与 Set",
+              "path": "java/collections/list-set"
+            },
+            {
+              "title": "Map",
+              "path": "java/collections/map"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "GIT",
+      "path": "git",
+      "children": [
+        {
+          "title": "Git 基础",
+          "path": "git/basics"
+        },
+        {
+          "title": "分支管理",
+          "path": "git/branching"
+        },
+        {
+          "title": "远程仓库",
+          "path": "git/remote"
+        }
+      ]
+    },
+    {
+      "title": "业务规则",
+      "path": "business",
+      "children": [
+        {
+          "title": "订单规则",
+          "path": "business/order-rules",
+          "children": [
+            {
+              "title": "状态机",
+              "path": "business/order-rules/state-machine"
+            },
+            {
+              "title": "校验规则",
+              "path": "business/order-rules/validation"
+            }
+          ]
+        },
+        {
+          "title": "风控规则",
+          "path": "business/risk-rules",
+          "children": [
+            {
+              "title": "额度限制",
+              "path": "business/risk-rules/limits"
+            },
+            {
+              "title": "审核流程",
+              "path": "business/risk-rules/audit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "前端",
+      "path": "frontend",
+      "children": [
+        {
+          "title": "CSS Flex 布局",
+          "path": "frontend/css-flex"
+        },
+        {
+          "title": "JavaScript 异步编程",
+          "path": "frontend/js-async"
+        },
         {
           "title": "VS Code 快捷键",
-          "path": "notes/tools/vscode-shortcuts"
+          "path": "frontend/vscode-shortcuts"
         }
       ]
     }

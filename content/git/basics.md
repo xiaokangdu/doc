@@ -42,4 +42,4 @@ fix(nav): 修复移动端菜单无法收起的问题
 2. **想撤销暂存**：使用 git restore --staged 文件名
 3. **想看某行是谁改的**：使用 git blame 文件名
 
-下一步可以阅读 [分支管理](notes/git/branching)。
+下一步可以阅读 [分支管理](git/branching)。

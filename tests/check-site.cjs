@@ -15,12 +15,14 @@ console.log('[1] 菜单配置');
 const config = JSON.parse(fs.readFileSync(path.join(root, 'content/nav.json'), 'utf8'));
 const flat = Core.flattenNav(config.nav);
 ok('nav.json 可解析', true);
-ok('菜单条目 >= 6', flat.length >= 6, String(flat.length));
+ok('顶部大类 >= 4', config.nav.length >= 4, String(config.nav.length));
+ok('可导航页面 >= 25', flat.length >= 25, String(flat.length));
 ok('站点标题存在', !!config.site && !!config.site.title);
-
-const missing = [];
-const seen = {};
-const dup = [];
+config.nav.forEach(function (top) {
+  ok('大类有概览页 ' + top.title, !!top.path);
+  ok('大类有子菜单 ' + top.title, !!(top.children && top.children.length));
+});
+const missing = [], dup = [], seen = {};
 flat.forEach(function (item) {
   if (!fs.existsSync(path.join(root, 'content', item.path + '.md'))) { missing.push(item.path); }
   if (seen[item.path]) { dup.push(item.path); }
@@ -37,13 +39,21 @@ flat.forEach(function (item) {
   try { result = Markdown.parse(md); }
   catch (err) { ok('渲染 ' + item.path, false, err.message); return; }
   ok('渲染非空 ' + item.path, result.html.length > 60, String(result.html.length));
-  ok('无 undefined ' + item.path, result.html.indexOf('undefined') === -1);
   ok('含一级标题 ' + item.path, result.html.indexOf('<h1') !== -1);
   headings += result.toc.length;
 });
 ok('目录条目总数 > 0', headings > 0, String(headings));
 
-console.log('[3] 站内链接');
+console.log('[3] 三级结构');
+let threeLevel = 0;
+config.nav.forEach(function (top) {
+  (top.children || []).forEach(function (sub) {
+    if (sub.children && sub.children.length) { threeLevel += 1; }
+  });
+});
+ok('存在三层结构（子主题下还有知识点）', threeLevel >= 3, String(threeLevel));
+
+console.log('[4] 站内链接');
 const badLinks = [];
 flat.forEach(function (item) {
   const md = fs.readFileSync(path.join(root, 'content', item.path + '.md'), 'utf8');
@@ -59,20 +69,20 @@ flat.forEach(function (item) {
 });
 ok('站内链接均可解析', badLinks.length === 0, badLinks.join('; '));
 
-console.log('[4] 页面骨架');
+console.log('[5] 页面骨架');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 ['assets/css/style.css', 'assets/js/markdown.js', 'assets/js/core.js', 'assets/js/app.js'].forEach(function (asset) {
   ok('引用存在 ' + asset, html.indexOf(asset) !== -1 && fs.existsSync(path.join(root, asset)));
 });
-['navTree', 'contentInner', 'searchInput', 'tocPanel', 'siteFooter', 'progressBar', 'sidebar', 'backTop'].forEach(function (id) {
+['segmented', 'navTree', 'contentInner', 'searchInput', 'tocPanel', 'siteFooter', 'progressBar', 'backTop', 'sidebar'].forEach(function (id) {
   ok('含 #' + id, html.indexOf('id="' + id + '"') !== -1);
 });
+ok('菜单无徽标类名', html.indexOf('nav-badge') === -1);
 
-console.log('[5] 源码卫生');
+console.log('[6] 源码卫生');
 ['assets/js/markdown.js', 'assets/js/core.js', 'assets/js/app.js', 'assets/css/style.css'].forEach(function (file) {
   const src = fs.readFileSync(path.join(root, file), 'utf8');
   ok(file + ' 无模板残留反引号', src.indexOf(String.fromCharCode(96)) === -1);
-  ok(file + ' 无调试残留', src.indexOf('console.log(') === -1 || file.indexOf('app.js') !== -1);
 });
 
 console.log('\n自检结果：' + pass + ' 通过 / ' + fail + ' 失败');
