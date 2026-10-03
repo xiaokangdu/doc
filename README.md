@@ -40,16 +40,26 @@ knowledge-site/
 │   ├── git/              GIT：基础 / 分支 / 远程
 │   ├── business/         业务规则：订单 / 风控
 │   └── frontend/         前端：CSS / JS / 工具
-├── scripts/new-note.mjs  新增笔记工具
+├── scripts/
+│   ├── new-note.mjs      新增笔记工具
+│   └── serve.mjs         零依赖本地预览服务
 └── tests/                自检脚本
 ~~~
 
 ## 本地预览
 
+无需任何依赖，用自带的 Node 静态服务器：
+
 ~~~bash
 cd knowledge-site
+node scripts/serve.mjs          # 默认 http://127.0.0.1:8080
+node scripts/serve.mjs 9000     # 指定端口
+~~~
+
+也可以使用 Python（如果已安装）：
+
+~~~bash
 python3 -m http.server 8080
-# 浏览器打开 http://localhost:8080
 ~~~
 
 > 请勿直接双击 index.html，浏览器安全策略会阻止读取笔记文件。
