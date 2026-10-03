@@ -1,0 +1,74 @@
+{
+  "site": {
+    "title": "知识笔记",
+    "subtitle": "Personal Knowledge Notes",
+    "footer": "",
+    "lastUpdated": "2026-10-03"
+  },
+  "nav": [
+    {
+      "title": "开始",
+      "icon": "🏠",
+      "children": [
+        {
+          "title": "首页",
+          "path": "home",
+          "icon": "📄"
+        },
+        {
+          "title": "站点使用指南",
+          "path": "guide",
+          "icon": "🧭"
+        }
+      ]
+    },
+    {
+      "title": "编程基础",
+      "icon": "💻",
+      "children": [
+        {
+          "title": "Git",
+          "icon": "🌿",
+          "children": [
+            {
+              "title": "Git 基础",
+              "path": "notes/git/git-basics"
+            },
+            {
+              "title": "分支管理",
+              "path": "notes/git/branching"
+            },
+            {
+              "title": "远程仓库操作备忘",
+              "path": "notes/git/remote-notes"
+            }
+          ]
+        },
+        {
+          "title": "前端",
+          "icon": "🎨",
+          "children": [
+            {
+              "title": "CSS Flex 布局",
+              "path": "notes/frontend/css-flex"
+            },
+            {
+              "title": "JavaScript 异步编程",
+              "path": "notes/frontend/js-async"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "效率工具",
+      "icon": "🧰",
+      "children": [
+        {
+          "title": "VS Code 快捷键",
+          "path": "notes/tools/vscode-shortcuts"
+        }
+      ]
+    }
+  ]
+}

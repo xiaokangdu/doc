@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>E2E 交互自检</title>
+  <style>body{font-family:monospace;padding:16px}iframe{width:1180px;height:760px;border:1px solid #ccc}pre{white-space:pre-wrap}</style>
+</head>
+<body>
+  <iframe id="frame" src="../index.html"></iframe>
+  <pre id="out">E2E-START
+RUNNING
+E2E-END</pre>
+  <script>
+    (function () {
+      var out = document.getElementById('out');
+      var lines = [];
+      function log(name, cond) { lines.push((cond ? 'PASS' : 'FAIL') + ' :: ' + name); }
+      function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+      async function run() {
+        var frame = document.getElementById('frame');
+        await new Promise(function (resolve) { frame.addEventListener('load', resolve, { once: true }); });
+        await wait(1500);
+        var w = frame.contentWindow;
+        var d = frame.contentDocument;
+
+        log('左侧菜单已渲染(>=6)', d.querySelectorAll('#navTree .nav-row').length >= 6);
+        log('首页内容渲染', d.querySelector('#contentInner').textContent.indexOf('欢迎来到我的知识笔记') !== -1);
+        log('面包屑存在', !!d.querySelector('.breadcrumb'));
+        log('顶栏品牌标题加载', d.getElementById('brandText').textContent.length > 0);
+
+        w.location.hash = '#/notes/git/git-basics';
+        await wait(1500);
+        var article = d.querySelector('.article');
+        log('路由切换并渲染笔记', !!article && article.textContent.indexOf('工作区') !== -1);
+        log('本页目录已生成(>=2)', d.querySelectorAll('#tocList a').length >= 2);
+        log('上一篇/下一篇出现', !!d.querySelector('.pager__link'));
+        log('当前菜单高亮', !!d.querySelector('.nav-row.active'));
+
+        var input = d.getElementById('searchInput');
+        input.value = '分支';
+        input.dispatchEvent(new w.Event('input', { bubbles: true }));
+        await wait(2000);
+        var results = d.getElementById('searchResults');
+        log('搜索下拉出现', results.hidden === false);
+        log('搜索命中标题', results.textContent.indexOf('分支管理') !== -1);
+
+        var first = results.querySelector('.search-item');
+        if (first) { first.click(); }
+        await wait(1200);
+        log('搜索结果可跳转', d.querySelector('.article').textContent.indexOf('分支') !== -1);
+        log('跳转后搜索框清空', input.value === '');
+
+        var tocLink = d.querySelector('#tocList a');
+        if (tocLink) { tocLink.click(); }
+        await wait(600);
+        log('目录点击不破坏哈希路由', w.location.hash.indexOf('#/') === 0);
+
+        d.getElementById('randomBtn').click();
+        await wait(1200);
+        log('随机一篇可用', !!d.querySelector('.article') && d.querySelector('.article').textContent.length > 20);
+
+        d.getElementById('menuToggle').click();
+        await wait(300);
+        log('移动端菜单可打开', d.body.classList.contains('nav-open'));
+
+        out.textContent = 'E2E-START\n' + lines.join('\n') + '\nE2E-END';
+      }
+
+      run().catch(function (err) {
+        out.textContent = 'E2E-START\nFAIL :: 运行异常 ' + err.message + '\nE2E-END';
+      });
+    })();
+  </script>
+</body>
+</html>

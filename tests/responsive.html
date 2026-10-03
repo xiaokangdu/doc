@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>响应式自检</title>
+<style>body{font-family:monospace;margin:0}iframe{width:430px;height:900px;border:0;display:block}</style></head>
+<body>
+  <iframe id="frame" src="../index.html" width="430" height="900"></iframe>
+  <pre id="out">RWD-START
+RUNNING
+RWD-END</pre>
+  <script>
+    (function () {
+      var out = document.getElementById('out');
+      function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+      async function run() {
+        var frame = document.getElementById('frame');
+        await new Promise(function (resolve) { frame.addEventListener('load', resolve, { once: true }); });
+        await wait(1500);
+        var w = frame.contentWindow, d = frame.contentDocument;
+        var lines = [];
+        var innerWidth = w.innerWidth;
+        var doc = d.documentElement;
+        lines.push('viewport=' + innerWidth);
+        lines.push('doc.scrollWidth=' + doc.scrollWidth);
+        lines.push('body.scrollWidth=' + d.body.scrollWidth);
+        lines.push('horizontalOverflow=' + (doc.scrollWidth > innerWidth + 1));
+        var article = d.querySelector('.article');
+        if (article) { lines.push('article.right=' + Math.round(article.getBoundingClientRect().right)); }
+        var wrap = d.querySelector('.table-wrap');
+        if (wrap) { lines.push('tableWrap client=' + wrap.clientWidth + ' scroll=' + wrap.scrollWidth); }
+        var offenders = [];
+        var all = d.querySelectorAll('body *');
+        for (var i = 0; i < all.length; i += 1) {
+          var el = all[i];
+          var style = w.getComputedStyle(el);
+          if (style.position === 'fixed') { continue; }
+          var rect = el.getBoundingClientRect();
+          if (rect.right > innerWidth + 1 && rect.width > 0) {
+            offenders.push(el.tagName.toLowerCase() + '.' + (el.className || '') + ' right=' + Math.round(rect.right) + ' w=' + Math.round(rect.width));
+          }
+        }
+        lines.push('offenders=' + offenders.length);
+        offenders.slice(0, 12).forEach(function (line) { lines.push('OFF ' + line); });
+        out.textContent = 'RWD-START\n' + lines.join('\n') + '\nRWD-END';
+      }
+      run().catch(function (err) { out.textContent = 'RWD-START\nERROR ' + err.message + '\nRWD-END'; });
+    })();
+  </script>
+</body></html>
