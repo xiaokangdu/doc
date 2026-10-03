@@ -1,5 +1,5 @@
 /* ============================================================
-   知识笔记 · 浅色主题样式
+   晓康的笔记 · 浅色主题样式
    结构：变量 → 基础 → 顶栏 → 布局 → 侧栏导航 → 正文排版
         → 目录 → 搜索 → 页脚/分页 → 动效 → 响应式
    ============================================================ */
@@ -105,10 +105,10 @@ a { color: var(--accent-strong); text-decoration: none; }
   place-items: center;
   width: 30px; height: 30px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-teal));
+  background: linear-gradient(135deg, #14b8a6, #22c55e);
   color: #fff;
   font-size: 15px;
-  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.32);
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.32);
   transition: transform 0.3s var(--ease);
 }
 .brand:hover .brand__mark { transform: rotate(-8deg) scale(1.06); }

@@ -25,7 +25,7 @@ E2E-END</pre>
         var d = frame.contentDocument;
 
         log('左侧菜单已渲染(>=6)', d.querySelectorAll('#navTree .nav-row').length >= 6);
-        log('首页内容渲染', d.querySelector('#contentInner').textContent.indexOf('欢迎来到我的知识笔记') !== -1);
+        log('首页内容渲染', d.querySelector('#contentInner').textContent.indexOf('欢迎来到我的笔记库') !== -1);
         log('面包屑存在', !!d.querySelector('.breadcrumb'));
         log('顶栏品牌标题加载', d.getElementById('brandText').textContent.length > 0);
 

@@ -214,7 +214,7 @@
     dom.contentInner.innerHTML = '';
     dom.contentInner.appendChild(frag);
 
-    document.title = (node.title ? node.title + ' · ' : '') + (state.site.title || '知识笔记');
+    document.title = (node.title ? node.title + ' · ' : '') + (state.site.title || '晓康的笔记');
     buildToc(parsed.toc);
     window.scrollTo({ top: 0, behavior: 'auto' });
     onScroll();
@@ -311,7 +311,7 @@
     dom.contentInner.innerHTML = '';
     dom.contentInner.appendChild(box);
     dom.tocPanel.hidden = true;
-    document.title = '未找到 · ' + (state.site.title || '知识笔记');
+    document.title = '未找到 · ' + (state.site.title || '晓康的笔记');
   }
 
   function renderFileProtocolNotice() {
@@ -523,7 +523,7 @@
   }
 
   function renderFooter() {
-    var title = state.site.title || '知识笔记';
+    var title = state.site.title || '晓康的笔记';
     dom.siteFooter.textContent = '© ' + new Date().getFullYear() + ' ' + title + ' · 共 ' + state.flat.length + ' 篇笔记';
     if (state.site.lastUpdated) {
       dom.siteFooter.appendChild(el('span', null, ' · 最近更新 ' + state.site.lastUpdated));
@@ -612,8 +612,8 @@
       state.site = config.site || {};
       state.nav = config.nav || [];
       state.flat = Core.flattenNav(state.nav);
-      if (dom.brandText) { dom.brandText.textContent = state.site.title || '知识笔记'; }
-      document.title = state.site.title || '知识笔记';
+      if (dom.brandText) { dom.brandText.textContent = state.site.title || '晓康的笔记'; }
+      document.title = state.site.title || '晓康的笔记';
       buildSidebar();
       renderFooter();
       route();
